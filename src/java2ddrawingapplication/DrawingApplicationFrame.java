@@ -33,6 +33,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.JSpinner;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 /**
  *
@@ -40,17 +42,17 @@ import javax.swing.JSpinner;
  */
 public class DrawingApplicationFrame extends JFrame
 {
-
+//todo - ask about checkBox backgrounds, ask about dashLength, ask about artifacting when gradient shape
     // Create the panels for the top of the application. One panel for each
     // line and one to contain both of those panels.
     private final JPanel topPanel;
     private final JPanel topLine;
     private final JPanel bottomLine;
     
+    
     // create the widgets for the firstLine Panel.
     private final JLabel shapeLabel;
     private final JComboBox<String> shapeComboBox;
-    private static final String[] shapes = {"Line", "Oval", "Rectangle"};
     private final JButton firstColorButton;
     private final JButton secondColorButton;
     private final JButton undoButton;
@@ -68,16 +70,25 @@ public class DrawingApplicationFrame extends JFrame
    
     // Variables for drawPanel.
     private final DrawPanel drawPanel = new DrawPanel();
+    private static final String[] shapeNames = {"Line", "Rectangle", "Oval"};
+    private static final ArrayList<MyShapes> shapes = new ArrayList<MyShapes>();
     private String chosenShape = new String();
-    private Color firstColor = Color.BLACK;
-    private Color secondColor = Color.WHITE;
+    private Color[] colors = {Color.BLACK, Color.WHITE};
+    private Color firstColor = colors[0];
+    private Color secondColor = colors[1];
+    private BasicStroke stroke;
+    private int lineWidth;
+    private float[] dashLength;
+    private Paint paint;
     private boolean filled = false;
-    private boolean gradient = false;
-    private boolean dashed = false;
    
     // add status label
-    private final JLabel statusLabel;
+    String mouseLocation = new String();
+    private final JLabel statusLabel = new JLabel(mouseLocation);
     
+    
+    
+    //=======================================================================================
     // Constructor for DrawingApplicationFrame
     public DrawingApplicationFrame()
     {
@@ -87,34 +98,29 @@ public class DrawingApplicationFrame extends JFrame
         topPanel = new JPanel();
         topLine = new JPanel();
         bottomLine = new JPanel();
+        topLine.setBackground(Color.CYAN);
+        bottomLine.setBackground(Color.CYAN);
         
         // firstLine widgets
         shapeLabel = new JLabel("Shape: ");
         topLine.add(shapeLabel);
         
-        shapeComboBox = new JComboBox<String>(shapes);
+        shapeComboBox = new JComboBox<String>(shapeNames);
         shapeComboBox.setMaximumRowCount(3);
-        shapeComboBox.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent event) {
-                if (event.getStateChange() == ItemEvent.SELECTED) {
-                    chosenShape = shapeComboBox.getSelectedItem().toString();
-                }
-            }
-        });
         topLine.add(shapeComboBox);
         
         firstColorButton = new JButton("1st Color...");
-        ColorButtonListener firstColorButtonListener = new ColorButtonListener(firstColor);
+        ColorButtonListener firstColorButtonListener = new ColorButtonListener(0);
         firstColorButton.addActionListener(firstColorButtonListener);
         topLine.add(firstColorButton);
         secondColorButton = new JButton("2nd Color...");
-        ColorButtonListener secondColorButtonListener = new ColorButtonListener(secondColor);
+        ColorButtonListener secondColorButtonListener = new ColorButtonListener(1);
         secondColorButton.addActionListener(secondColorButtonListener);
         topLine.add(secondColorButton);
         
         undoButton = new JButton("Undo");
-        //todo: undo button
+        UndoButtonListener undoButtonListener = new UndoButtonListener();
+        undoButton.addActionListener(undoButtonListener);
         topLine.add(undoButton);
         clearButton = new JButton("Clear");
         ClearButtonListener clearButtonListener = new ClearButtonListener();
@@ -124,74 +130,83 @@ public class DrawingApplicationFrame extends JFrame
         // secondLine widgets
         optionsLabel = new JLabel("Options:");
         bottomLine.add(optionsLabel);
+        
         filledCheckBox = new JCheckBox("Filled");
-        
         gradientCheckBox = new JCheckBox("Use Gradient");
-        
         dashedCheckBox = new JCheckBox("Dashed");
+        bottomLine.add(filledCheckBox);
+        bottomLine.add(gradientCheckBox);
+        bottomLine.add(dashedCheckBox);
         
+        lineWidthLabel = new JLabel("Line Width:");
+        lineWidthSpinner = new JSpinner();
+        bottomLine.add(lineWidthLabel);
+        bottomLine.add(lineWidthSpinner);
+        
+        dashLengthLabel = new JLabel("Dash Length:");
+        dashLengthSpinner = new JSpinner();
+        bottomLine.add(dashLengthLabel);
+        bottomLine.add(dashLengthSpinner);
+
         // add top panel of two panels
+        topPanel.setLayout(new GridLayout(2,1));
         topPanel.add(topLine);
         topPanel.add(bottomLine);
         
         // add topPanel to North, drawPanel to Center, and statusLabel to South
         add(topPanel, BorderLayout.NORTH);
+        add(drawPanel, BorderLayout.CENTER);
+        add(statusLabel, BorderLayout.SOUTH);
+        
         //add listeners and event handlers
     }
 
+    //=======================================================================================    
     // Create event handlers, if needed
     private class ColorButtonListener implements ActionListener {
-        private Color color;
-        public ColorButtonListener(Color color) {
-            this.color = color;
+        private int index;
+        public ColorButtonListener(int index) {
+            this.index = index;
         }
         @Override
         public void actionPerformed(ActionEvent event) {
-            color = JColorChooser.showDialog(new JFrame(), "Choose a color", color);
+            colors[index] = JColorChooser.showDialog(new JFrame(), "Choose a color", colors[index]);
+            firstColor = colors[0];
+            secondColor = colors[1];
         }
         
     }
-    
-    private class ClearButtonListener implements ActionListener {
+    private class UndoButtonListener implements ActionListener {
+        //undos the last drawn shape by removing the last index in shapes and repainting
         @Override
         public void actionPerformed(ActionEvent event) {
-            drawPanel.removeAll();
+            if (shapes.isEmpty() == false) {
+                shapes.removeLast();
+                drawPanel.repaint();
+            }
         }
     }
-    
-    private class checkBoxListener implements ItemListener {
+    private class ClearButtonListener implements ActionListener {
+        //clears drawPanel by clearing shapes and repainting
         @Override
-        public void itemStateChanged(ItemEvent event) {
-            if (filledCheckBox.isSelected()) {
-                filled = true;
-            }
-            else if (filledCheckBox.isSelected() == false) {
-                filled = false;
-            }
-            
-            if (gradientCheckBox.isSelected()) {
-                gradient = true;
-            }
-            else if (gradientCheckBox.isSelected() == false) {
-                gradient = false;
-            }
-            
-            if (dashedCheckBox.isSelected()) {
-                dashed = true;
-            }
-            else if (dashedCheckBox.isSelected() == false) {
-                dashed = false;
-            }
-            
+        public void actionPerformed(ActionEvent event) {
+            shapes.clear();
+            drawPanel.repaint();
         }
     }
     
+    //=======================================================================================
     // Create a private inner class for the DrawPanel.
     private class DrawPanel extends JPanel
     {
 
         public DrawPanel()
         {
+            //add the mouseHandlers
+            MouseHandler mouseHandler = new MouseHandler();
+            addMouseListener(mouseHandler);
+            addMouseMotionListener(mouseHandler);
+                    
         }
 
         public void paintComponent(Graphics g)
@@ -200,7 +215,9 @@ public class DrawingApplicationFrame extends JFrame
             Graphics2D g2d = (Graphics2D) g;
 
             //loop through and draw each shape in the shapes arraylist
-
+            for (MyShapes shape : shapes) {
+                shape.draw(g2d);
+            }
         }
 
 
@@ -209,20 +226,66 @@ public class DrawingApplicationFrame extends JFrame
 
             public void mousePressed(MouseEvent event)
             {
+                //set the different variables
+                chosenShape = (String) shapeComboBox.getSelectedItem();
+                lineWidth = (int) lineWidthSpinner.getValue();
+//                dashLength[0] = (float) dashLengthSpinner.getValue();
+                
+                if (filledCheckBox.isSelected()) {
+                    filled = true;
+                }
+                else if (filledCheckBox.isSelected() == false) {
+                    filled = false;
+                }
+
+                if (gradientCheckBox.isSelected()) {
+                    paint = new GradientPaint(0, 0, firstColor, 50, 50, secondColor, true);
+                }
+                else if (gradientCheckBox.isSelected() == false) {
+                    paint = firstColor;
+                }
+
+                if (dashedCheckBox.isSelected()) {
+                    stroke = new BasicStroke(lineWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10, dashLength, 0);
+                }
+                else if (dashedCheckBox.isSelected() == false) {
+                    stroke = new BasicStroke(lineWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+                }
+                lineWidth = (int) lineWidthSpinner.getValue();
+
+                
+                //select the correct shape and add it to shapes
+                if (chosenShape == "Line") {
+                    shapes.add(new MyLine(event.getPoint(), event.getPoint(), paint, stroke));
+                }
+                else if (chosenShape == "Rectangle") {
+                    shapes.add(new MyRectangle(event.getPoint(), event.getPoint(), paint, stroke, filled)); 
+                }
+                else {
+                    shapes.add(new MyOval(event.getPoint(), event.getPoint(), paint, stroke, filled));
+                }
+                repaint();
             }
 
             public void mouseReleased(MouseEvent event)
             {
+                repaint();
             }
 
             @Override
             public void mouseDragged(MouseEvent event)
             {
+                //update the endpoint of the shape
+                shapes.getLast().setEndPoint(event.getPoint());
+                repaint();
             }
 
             @Override
             public void mouseMoved(MouseEvent event)
-            {
+            {   
+                //change mouseLocation to the coordinates of the mouse on drawPanel
+                mouseLocation = String.format("(%s,%s)", event.getX(), event.getY());
+                statusLabel.setText(mouseLocation);
             }
         }
         
