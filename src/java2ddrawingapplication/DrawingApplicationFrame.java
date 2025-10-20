@@ -92,6 +92,7 @@ public class DrawingApplicationFrame extends JFrame
     // Constructor for DrawingApplicationFrame
     public DrawingApplicationFrame()
     {
+        super("2dDrawing");
         setLayout(new BorderLayout());
         
         // add widgets to panels
