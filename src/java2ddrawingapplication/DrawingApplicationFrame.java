@@ -33,6 +33,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.JSpinner;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -42,7 +43,6 @@ import javax.swing.event.ChangeListener;
  */
 public class DrawingApplicationFrame extends JFrame
 {
-//todo - ask about checkBox backgrounds, ask about dashLength, ask about artifacting when gradient shape
     // Create the panels for the top of the application. One panel for each
     // line and one to contain both of those panels.
     private final JPanel topPanel;
@@ -78,7 +78,7 @@ public class DrawingApplicationFrame extends JFrame
     private Color secondColor = colors[1];
     private BasicStroke stroke;
     private int lineWidth;
-    private float[] dashLength;
+    private float[] dashLength = new float[1];
     private Paint paint;
     private boolean filled = false;
    
@@ -139,12 +139,12 @@ public class DrawingApplicationFrame extends JFrame
         bottomLine.add(dashedCheckBox);
         
         lineWidthLabel = new JLabel("Line Width:");
-        lineWidthSpinner = new JSpinner();
+        lineWidthSpinner = new JSpinner(new SpinnerNumberModel(1,1,99,1));
         bottomLine.add(lineWidthLabel);
         bottomLine.add(lineWidthSpinner);
         
         dashLengthLabel = new JLabel("Dash Length:");
-        dashLengthSpinner = new JSpinner();
+        dashLengthSpinner = new JSpinner(new SpinnerNumberModel(1,1,99,1));
         bottomLine.add(dashLengthLabel);
         bottomLine.add(dashLengthSpinner);
 
@@ -229,7 +229,7 @@ public class DrawingApplicationFrame extends JFrame
                 //set the different variables
                 chosenShape = (String) shapeComboBox.getSelectedItem();
                 lineWidth = (int) lineWidthSpinner.getValue();
-//                dashLength[0] = (float) dashLengthSpinner.getValue();
+                dashLength[0] = (float) (int) dashLengthSpinner.getValue();
                 
                 if (filledCheckBox.isSelected()) {
                     filled = true;
@@ -251,7 +251,6 @@ public class DrawingApplicationFrame extends JFrame
                 else if (dashedCheckBox.isSelected() == false) {
                     stroke = new BasicStroke(lineWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
                 }
-                lineWidth = (int) lineWidthSpinner.getValue();
 
                 
                 //select the correct shape and add it to shapes
